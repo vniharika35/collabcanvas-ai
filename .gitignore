@@ -1,0 +1,35 @@
+# Node
+node_modules/
+.next/
+.mocks/
+coverage/
+*.log
+
+# Env files
+.env*
+.envrc
+
+# TypeScript
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Build artifacts
+.dist/
+build/
+dist/
+
+# Tooling
+.idea/
+.vscode/
+.DS_Store
+
+# Prisma
+prisma/migrations/
+
+# Misc
+*.sqlite
