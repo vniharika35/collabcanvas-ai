@@ -1,0 +1,18 @@
+### Cluster endpoint
+POST http://localhost:8000/cluster
+Content-Type: application/json
+
+{
+  "boardId": "demo",
+  "nodeIds": ["n1", "n2", "n3", "n4", "n5"]
+}
+
+### Outline endpoint
+POST http://localhost:8000/outline
+Content-Type: application/json
+
+{
+  "boardId": "demo",
+  "clusterId": "cluster-0",
+  "style": "concise"
+}
