@@ -1,7 +1,8 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { Trace } from "@prisma/client";
 import * as Y from "yjs";
 
 interface PresenceCursor {
@@ -26,7 +27,7 @@ interface AckMessage {
   presence: PresenceState[];
 }
 
-interface PresenceUpdateMessage {
+interface PresenceUpdateBroadcastMessage {
   type: "presence:update";
   payload: PresenceState;
 }
@@ -36,7 +37,30 @@ interface PresenceRemoveMessage {
   clientId: string;
 }
 
-type ServerMessage = AckMessage | PresenceUpdateMessage | PresenceRemoveMessage;
+export type SerializedTrace = Omit<Trace, "createdAt"> & { createdAt: string };
+
+interface PresenceUpdateRequestMessage {
+  type: "presence:update";
+  payload: Omit<PresenceState, "clientId">;
+}
+
+interface TraceAppendMessage {
+  type: "trace:append";
+  payload: SerializedTrace;
+}
+
+type ServerMessage =
+  | AckMessage
+  | PresenceUpdateBroadcastMessage
+  | PresenceRemoveMessage
+  | TraceAppendMessage;
+
+type ClientMessage =
+  | PresenceUpdateRequestMessage
+  | {
+      type: "presence:heartbeat";
+    }
+  | TraceAppendMessage;
 
 export interface RealtimePeer extends PresenceState {
   clientId: string;
@@ -45,6 +69,7 @@ export interface RealtimePeer extends PresenceState {
 export interface UseRealtimePresenceOptions {
   boardId: string;
   self: Omit<PresenceState, "clientId" | "updatedAt">;
+  onTrace?: (trace: SerializedTrace) => void;
 }
 
 export interface UseRealtimePresenceResult {
@@ -52,6 +77,7 @@ export interface UseRealtimePresenceResult {
   doc: Y.Doc | null;
   peers: RealtimePeer[];
   updatePresence: (patch: Partial<Omit<PresenceState, "clientId" | "userId" | "name" | "color" | "updatedAt">>) => void;
+  broadcastTrace: (trace: SerializedTrace) => void;
 }
 
 const DEFAULT_REALTIME_URL = process.env.NEXT_PUBLIC_REALTIME_URL ?? "ws://localhost:3011/ws";
@@ -60,7 +86,7 @@ function isBinaryMessage(data: unknown): data is ArrayBuffer {
   return data instanceof ArrayBuffer;
 }
 
-export function useRealtimePresence({ boardId, self }: UseRealtimePresenceOptions): UseRealtimePresenceResult {
+export function useRealtimePresence({ boardId, self, onTrace }: UseRealtimePresenceOptions): UseRealtimePresenceResult {
   const [clientId, setClientId] = useState<string | null>(null);
   const [peers, setPeers] = useState<Map<string, RealtimePeer>>(() => new Map());
   const [docState, setDocState] = useState<Y.Doc | null>(null);
@@ -72,6 +98,12 @@ export function useRealtimePresence({ boardId, self }: UseRealtimePresenceOption
     selection: self.selection ?? [],
     updatedAt: 0,
   });
+
+  const traceHandlerRef = useRef<UseRealtimePresenceOptions["onTrace"]>(onTrace);
+
+  useEffect(() => {
+    traceHandlerRef.current = onTrace;
+  }, [onTrace]);
 
   useEffect(() => {
     const doc = new Y.Doc();
@@ -112,6 +144,8 @@ export function useRealtimePresence({ boardId, self }: UseRealtimePresenceOption
             next.delete(message.clientId);
             return next;
           });
+        } else if (message.type === "trace:append") {
+          traceHandlerRef.current?.(message.payload);
         }
       } catch (error) {
         console.error("Failed to parse realtime message", error);
@@ -158,7 +192,7 @@ export function useRealtimePresence({ boardId, self }: UseRealtimePresenceOption
         JSON.stringify({
           type: "presence:update",
           payload
-        })
+        } satisfies ClientMessage)
       );
     };
   }, [self]);
@@ -167,10 +201,23 @@ export function useRealtimePresence({ boardId, self }: UseRealtimePresenceOption
     selfPresenceRef.current = { ...selfPresenceRef.current, ...self };
   }, [self]);
 
+  const broadcastTrace = useCallback((trace: SerializedTrace) => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(
+      JSON.stringify({
+        type: "trace:append",
+        payload: trace
+      } satisfies ClientMessage)
+    );
+  }, []);
+
   return {
     clientId,
     doc: docState,
     peers: Array.from(peers.values()),
-    updatePresence
+    updatePresence,
+    broadcastTrace
   };
 }

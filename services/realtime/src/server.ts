@@ -3,12 +3,14 @@ import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { WebSocket, WebSocketServer } from "ws";
 import * as Y from "yjs";
+import { SpanStatusCode } from "@opentelemetry/api";
 
 import { config } from "./config.js";
 import { DocManager } from "./doc-manager.js";
 import { RedisCoordinator } from "./redis.js";
 import { log, warn } from "./logger.js";
-import type { ClientMessage, PresenceState, RedisEvent } from "./types.js";
+import type { ClientMessage, PresenceState, RedisEvent, TraceAppendMessage } from "./types.js";
+import { tracer, withSpan } from "./tracing.js";
 
 const redis = new RedisCoordinator(config.redisUrl);
 const docManager = new DocManager(redis);
@@ -16,8 +18,19 @@ const docManager = new DocManager(redis);
 redis.onMessage((event: RedisEvent) => {
   if (event.kind === "doc:update") {
     docManager.applyRemoteDocUpdate(event);
-  } else {
+  } else if (event.kind === "presence:update") {
     docManager.applyRemotePresence(event);
+  } else if (event.kind === "trace:append") {
+    void withSpan(
+      "realtime.trace.broadcast",
+      () => {
+        docManager.broadcastJson(event.boardId, {
+          type: "trace:append",
+          payload: event.trace
+        });
+      },
+      { "board.id": event.boardId, source: "redis" }
+    );
   }
 });
 
@@ -51,6 +64,29 @@ function handlePresenceMessage(
   docManager.updatePresence(boardId, clientId, presence);
 }
 
+async function handleTraceAppend(boardId: string, clientId: string, message: TraceAppendMessage) {
+  await withSpan(
+    "realtime.trace.append",
+    () => {
+      docManager.broadcastJson(
+        boardId,
+        {
+          type: "trace:append",
+          payload: message.payload
+        },
+        clientId
+      );
+
+      redis.publish({
+        kind: "trace:append",
+        boardId,
+        trace: message.payload
+      });
+    },
+    { "board.id": boardId }
+  );
+}
+
 export function createRealtimeServer() {
   const httpServer = createServer((_, response) => {
     response.writeHead(200, { "Content-Type": "application/json" });
@@ -69,6 +105,10 @@ export function createRealtimeServer() {
     }
 
     const clientId = randomUUID();
+    const connectionSpan = tracer.startSpan("realtime.connection", {
+      attributes: { "board.id": boardId, "client.id": clientId }
+    });
+
     try {
       const context = await docManager.ensureInitialized(boardId);
       docManager.attachConnection(boardId, clientId, socket);
@@ -83,8 +123,15 @@ export function createRealtimeServer() {
         boardId,
         presence
       });
+      connectionSpan.end();
     } catch (error) {
       warn("Failed to initialize board doc", { boardId, error });
+      connectionSpan.recordException(error as Error);
+      connectionSpan.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : "Failed to init"
+      });
+      connectionSpan.end();
       socket.close(1011, "Failed to initialize board");
       return;
     }
@@ -103,6 +150,10 @@ export function createRealtimeServer() {
         const message = JSON.parse(payload) as ClientMessage;
         if (message.type === "presence:update") {
           handlePresenceMessage(boardId, clientId, message.payload);
+        } else if (message.type === "trace:append") {
+          handleTraceAppend(boardId, clientId, message).catch((error) =>
+            warn("Failed to broadcast trace", error)
+          );
         }
       } catch (error) {
         warn("Failed to process client message", error);

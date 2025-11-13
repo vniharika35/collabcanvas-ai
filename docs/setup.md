@@ -110,3 +110,18 @@ This log captures the environment checks and scaffolding steps completed so far.
 - Ghost nodes are tagged in the Yjs document (`ghost: true`) and only persist once the user clicks **Accept outline**.
 - Outline Accept/Undo mutate the shared doc, triggering the realtime persistence loop and updating Postgres automatically.
 - Traces are recorded through `POST /api/boards/[boardId]/traces`, keeping the sidebar up to date with latency/model metadata.
+
+## Observability & Telemetry (Phase 6)
+- Every service now boots an OpenTelemetry SDK:
+  - `apps/web/instrumentation.ts` spins up a NodeSDK + OTLP HTTP exporter once per process.
+  - `services/realtime/src/telemetry.ts` and `services/ai-broker/app/telemetry.py` do the same for the WebSocket + FastAPI layers.
+  - Shared helpers (`withSpan`) wrap Prisma, Redis, and handler hotspots.
+- Environment knobs: `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SDK_DISABLED`.
+- `observability/otel-collector.yaml` exposes OTLP gRPC/HTTP receivers, forwards traces upstream (set `OTLP_UPSTREAM_*` env vars), and publishes spanmetrics to Prometheus on `:8889` for the Grafana dashboards in `observability/grafana/`.
+- Dashboards: `service-health.json` (throughput/latency/error rate) and `trace-insights.json` (operation hotspots + TraceQL search) are import-ready with datasource variables for Prometheus + Tempo.
+
+## Automated Tests & QA (Phase 6)
+- Added Vitest workspace config (`vitest.config.ts`) plus unit tests covering shared Zod schemas and the trace API handler. Run via `pnpm test:unit`.
+- Added Playwright config + an end-to-end spec (`tests/e2e/board-flow.spec.ts`) that drives sticky note creation, `/cluster`, `/outline`, and Accept. Run via `pnpm test:e2e` (requires running services + seeded DB; install browsers once with `pnpm exec playwright install`).
+- Root scripts: `pnpm test` (unit), `pnpm test:e2e`, and `pnpm test:all` to smoke both suites locally.
+- Board UI exposes deterministic `data-testid` hooks plus aria-live error messaging to keep tests resilient and accessible.

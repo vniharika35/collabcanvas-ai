@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { withSpan } from "@/lib/tracing";
 
 export async function GET(
   _: Request,
@@ -9,17 +10,20 @@ export async function GET(
   const { boardId } = params;
 
   try {
-    const board = await prisma.board.findUnique({
-      where: { id: boardId },
-      include: {
-        nodes: {
-          orderBy: { createdAt: "asc" },
+    const board = await withSpan("api.board.fetch", (span) => {
+      span.setAttributes({ "board.id": boardId });
+      return prisma.board.findUnique({
+        where: { id: boardId },
+        include: {
+          nodes: {
+            orderBy: { createdAt: "asc" },
+          },
+          traces: {
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          },
         },
-        traces: {
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
-      },
+      });
     });
 
     if (!board) {

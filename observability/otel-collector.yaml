@@ -1,0 +1,41 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch: {}
+  spanmetrics:
+    metrics_exporter: prometheus
+    dimensions:
+      - name: service.name
+      - name: span.kind
+      - name: status.code
+    histogram:
+      explicit:
+        buckets: [10000, 50000, 100000, 250000, 500000, 1000000, 2000000, 5000000]
+
+exporters:
+  logging:
+    loglevel: info
+  otlphttp/grafana:
+    endpoint: ${OTLP_UPSTREAM_ENDPOINT}
+    headers:
+      authorization: ${OTLP_UPSTREAM_AUTH}
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: collabcanvas
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlphttp/grafana]
+    metrics/spanmetrics:
+      receivers: [otlp]
+      processors: [spanmetrics]
+      exporters: [prometheus]

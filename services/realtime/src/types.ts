@@ -34,9 +34,33 @@ export interface PresenceRemoveMessage {
   clientId: string;
 }
 
-export type ServerMessage = PresenceMessage | HeartbeatMessage | AckMessage | PresenceRemoveMessage;
+export interface TraceAppendPayload {
+  id: string;
+  boardId: string;
+  actor: string;
+  action: string;
+  latencyMs: number | null;
+  model: string | null;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  createdAt: string;
+  prompt?: unknown;
+  response?: unknown;
+}
 
-export type ClientMessage = PresenceMessage | HeartbeatMessage;
+export interface TraceAppendMessage {
+  type: "trace:append";
+  payload: TraceAppendPayload;
+}
+
+export type ServerMessage =
+  | PresenceMessage
+  | HeartbeatMessage
+  | AckMessage
+  | PresenceRemoveMessage
+  | TraceAppendMessage;
+
+export type ClientMessage = PresenceMessage | HeartbeatMessage | TraceAppendMessage;
 
 export interface RedisDocUpdateEvent {
   kind: "doc:update";
@@ -52,4 +76,10 @@ export interface RedisPresenceEvent {
   payload: PresenceState | null;
 }
 
-export type RedisEvent = RedisDocUpdateEvent | RedisPresenceEvent;
+export interface RedisTraceAppendEvent {
+  kind: "trace:append";
+  boardId: string;
+  trace: TraceAppendPayload;
+}
+
+export type RedisEvent = RedisDocUpdateEvent | RedisPresenceEvent | RedisTraceAppendEvent;

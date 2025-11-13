@@ -7,7 +7,7 @@ import * as Y from "yjs";
 
 import { Button } from "@/components/ui/button";
 import { aiClient } from "@/lib/ai-client";
-import { useRealtimePresence } from "@/lib/realtime-client";
+import { useRealtimePresence, type SerializedTrace } from "@/lib/realtime-client";
 import { cn } from "@/lib/utils";
 
 type CanvasNode = {
@@ -20,7 +20,9 @@ type CanvasNode = {
   ghost: boolean;
 };
 
-type CanvasTrace = Trace & {
+type TraceLike = SerializedTrace | Trace;
+
+type CanvasTrace = Omit<SerializedTrace, "createdAt"> & {
   createdAt: Date;
 };
 
@@ -33,7 +35,7 @@ type BoardWithData = Board & {
     clusterId: string | null;
     content: unknown;
   }>;
-  traces: Trace[];
+  traces: TraceLike[];
 };
 
 interface PendingOutline {
@@ -51,10 +53,14 @@ interface TracePayload {
   tokensOut?: number | null;
 }
 
-function parseTrace(trace: Trace): CanvasTrace {
+function parseTrace(trace: TraceLike): CanvasTrace {
+  const { createdAt, ...rest } = trace as TraceLike & {
+    createdAt: Date | string;
+  };
+
   return {
-    ...trace,
-    createdAt: trace.createdAt instanceof Date ? trace.createdAt : new Date(trace.createdAt),
+    ...(rest as Omit<SerializedTrace, "createdAt">),
+    createdAt: createdAt instanceof Date ? createdAt : new Date(createdAt),
   };
 }
 
@@ -145,7 +151,15 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     };
   }, [boardId]);
 
-  const { clientId: realtimeClientId, doc, peers, updatePresence } = useRealtimePresence({
+  const upsertTrace = useCallback((incoming: SerializedTrace) => {
+    setTraces((prev) => {
+      const parsed = parseTrace(incoming);
+      const filtered = prev.filter((trace) => trace.id !== parsed.id);
+      return [parsed, ...filtered].slice(0, 10);
+    });
+  }, []);
+
+  const { clientId: realtimeClientId, doc, peers, updatePresence, broadcastTrace } = useRealtimePresence({
     boardId,
     self: {
       userId: viewerIdentity.userId,
@@ -153,6 +167,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
       color: viewerIdentity.color,
       selection: [],
     },
+    onTrace: upsertTrace,
   });
 
   const remotePeers = useMemo(
@@ -185,13 +200,14 @@ export function BoardClient({ board }: { board: BoardWithData }) {
           throw new Error(`Failed to record trace (status ${res.status})`);
         }
 
-        const created = (await res.json()) as Trace;
-        setTraces((prev) => [parseTrace(created), ...prev].slice(0, 10));
+        const created = (await res.json()) as SerializedTrace;
+        upsertTrace(created);
+        broadcastTrace(created);
       } catch (error) {
         console.error("Failed to record trace", error);
       }
     },
-    [boardId]
+    [boardId, broadcastTrace, upsertTrace]
   );
 
   useEffect(() => {
@@ -527,16 +543,24 @@ export function BoardClient({ board }: { board: BoardWithData }) {
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Active board</p>
             <h1 className="text-2xl font-semibold tracking-tight">{board.title}</h1>
             {actionError ? (
-              <p className="text-xs text-red-600">{actionError}</p>
+              <p className="text-xs text-red-600" role="status" aria-live="polite">
+                {actionError}
+              </p>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={addStickyNote} size="sm" disabled={!docReady || clusterInFlight || outlineInFlight}>
+            <Button
+              data-testid="add-sticky"
+              onClick={addStickyNote}
+              size="sm"
+              disabled={!docReady || clusterInFlight || outlineInFlight}
+            >
               Add sticky note
             </Button>
             <Button
               variant="outline"
               size="sm"
+              data-testid="run-cluster"
               onClick={runCluster}
               disabled={!docReady || clusterInFlight}
             >
@@ -545,6 +569,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
             <Button
               variant="outline"
               size="sm"
+              data-testid="run-outline"
               onClick={runOutline}
               disabled={!docReady || outlineInFlight || !selectedClusterId}
             >
@@ -552,10 +577,21 @@ export function BoardClient({ board }: { board: BoardWithData }) {
             </Button>
             {pendingOutline ? (
               <>
-                <Button size="sm" onClick={handleAcceptOutline} disabled={!docReady || outlineInFlight}>
+                <Button
+                  data-testid="accept-outline"
+                  size="sm"
+                  onClick={handleAcceptOutline}
+                  disabled={!docReady || outlineInFlight}
+                >
                   Accept outline
                 </Button>
-                <Button variant="secondary" size="sm" onClick={handleUndoOutline} disabled={outlineInFlight}>
+                <Button
+                  data-testid="undo-outline"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUndoOutline}
+                  disabled={outlineInFlight}
+                >
                   Undo
                 </Button>
               </>
@@ -578,6 +614,9 @@ export function BoardClient({ board }: { board: BoardWithData }) {
                 return (
                   <article
                     key={node.id}
+                    data-testid="canvas-node"
+                    data-node-id={node.id}
+                    data-ghost={isGhost ? "true" : "false"}
                     className={cn(
                       "absolute flex w-64 flex-col rounded-xl border p-3 text-slate-800 shadow-md transition",
                       isGhost ? "cursor-default" : "cursor-grab",
@@ -597,17 +636,22 @@ export function BoardClient({ board }: { board: BoardWithData }) {
                     onPointerDown={(event) => handlePointerDown(event, node.id)}
                   >
                     <textarea
+                      data-testid="sticky-textarea"
                       value={node.text}
                       onFocus={(event) => event.currentTarget.select()}
                       onChange={(event) => updateNodeText(node.id, event.currentTarget.value)}
                       readOnly={isGhost || !docReady}
+                      aria-label="Sticky note text"
                       className="h-32 w-full resize-none rounded-lg border border-transparent bg-transparent text-sm outline-none focus:border-slate-400 focus:bg-white/90 read-only:cursor-not-allowed read-only:opacity-70"
                     />
                     <footer className="mt-3 flex items-center justify-between text-xs text-slate-600">
                       <span className="flex items-center gap-2">
                         <span>#{String(index + 1).padStart(2, "0")}</span>
                         {node.clusterId ? (
-                          <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700">
+                          <span
+                            data-testid="cluster-pill"
+                            className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700"
+                          >
                             {node.clusterId}
                           </span>
                         ) : null}
@@ -657,7 +701,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
         <div className="border-b border-border/60 px-5 py-4">
           <h2 className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">Trace</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Latest AI + human actions. Realtime updates will land in Phase 4.
+            Latest AI + human actions, streaming live from the realtime service.
           </p>
         </div>
         <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4 text-sm">
