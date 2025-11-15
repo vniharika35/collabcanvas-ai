@@ -9,7 +9,8 @@
     "db:format": "prisma format",
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "test:unit": "tsx --test tests/**/*.test.ts"
   },
   "devDependencies": {
     "prisma": "^6.18.0",

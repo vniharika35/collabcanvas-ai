@@ -3,23 +3,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export default function BoardLayout({
   children,
@@ -28,55 +11,32 @@ export default function BoardLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
-        <Link href="/" className="text-sm font-semibold tracking-wide">
-          CollabCanvas.ai
-        </Link>
-        <div className="flex items-center gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Presence
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Currently online</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="justify-between">
-                You
-                <span className="text-xs text-muted-foreground">editing</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="justify-between">
-                Canvas AI
-                <span className="text-xs text-muted-foreground">idle</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                Invite teammate
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Invite collaborators</DialogTitle>
-                <DialogDescription>
-                  Share this board with a teammate or AI assistant. Links will respect
-                  board roles once auth is wired up.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-3 text-sm text-muted-foreground">
-                <p>Coming soon: copy invite link, manage access, add AI teammates.</p>
-              </div>
-              <DialogFooter>
-                <Button variant="secondary" size="sm">
-                  Copy invite link
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Button size="sm">AI hand-off</Button>
+      <header className="flex flex-col gap-3 border-b border-border/60 px-6 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="text-base font-semibold tracking-wide text-foreground">
+            CollabCanvas.ai
+          </Link>
+          <nav className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em]">
+            <Link href="/" className="text-foreground hover:text-primary">
+              Home
+            </Link>
+            <Link href="/dev/ai-preview" className="text-foreground hover:text-primary">
+              AI preview
+            </Link>
+            <Link href="https://github.com/vniharika35/collabcanvas-ai/tree/main/docs" target="_blank" rel="noreferrer" className="hover:text-primary">
+              Docs
+            </Link>
+          </nav>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            Need an ID? Run <code className="rounded bg-muted px-1 py-0.5">pnpm db:seed</code> and paste it on the home page.
+          </span>
+          <Button asChild size="sm">
+            <Link href="https://github.com/vniharika35/collabcanvas-ai" target="_blank" rel="noreferrer">
+              Repo
+            </Link>
+          </Button>
         </div>
       </header>
       <div className="flex flex-1 flex-col">{children}</div>
