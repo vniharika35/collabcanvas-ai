@@ -1,5 +1,5 @@
 // CollabCanvas.ai Prisma schema
-// Aligned with the zero-to-one MVP data model for realtime collaboration.
+// Defines every persisted entity flowing through the board + AI services.
 
 generator client {
   provider = "prisma-client-js"

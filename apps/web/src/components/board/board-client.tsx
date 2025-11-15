@@ -129,6 +129,10 @@ export function BoardClient({ board }: { board: BoardWithData }) {
   const boardId = board.id;
   const canvasAreaRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Generate a lightweight guest identity so cursors + presence can display
+   * consistent labels/colors even before auth is wired up.
+   */
   const viewerIdentity = useMemo(() => {
     const baseId =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -147,6 +151,10 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     };
   }, [boardId]);
 
+  /**
+   * Connect to the realtime websocket/Yjs service; this hook manages the
+   * shared document and multiplayer presence state for the board.
+   */
   const { clientId: realtimeClientId, doc, peers, updatePresence } = useRealtimePresence({
     boardId,
     self: {
@@ -174,6 +182,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     return map;
   }, [remotePeers]);
 
+  /** Aggregate counts for the dashboard cards in the header. */
   const stickyCount = useMemo(
     () => nodes.filter((node) => node.kind === "STICKY").length,
     [nodes]
@@ -194,6 +203,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
 
   const ghostCount = useMemo(() => nodes.filter((node) => node.ghost).length, [nodes]);
 
+  /** Dynamically size the canvas based on how far sticky notes are spread. */
   const { width: canvasWidth, height: canvasHeight, offsetX, offsetY } = useMemo(
     () => computeCanvasMetrics(nodes.map(({ x, y }) => ({ x, y }))),
     [nodes]
@@ -274,6 +284,10 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     return map;
   }, [clusterPalette, nodes]);
 
+  /**
+   * Helper to wrap Yjs mutations so they carry the correct origin metadata for
+   * reconciliation + presence broadcast.
+   */
   const transact = useCallback(
     (fn: () => void) => {
       if (!doc || !docReady) return;
@@ -282,6 +296,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     [doc, docReady, realtimeClientId, viewerIdentity.userId]
   );
 
+  /** Add a sticky note, supporting both realtime-connected and offline modes. */
   const addStickyNote = useCallback(() => {
     const baseNode = {
       id: "",
@@ -323,6 +338,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     setSelectedNodeId(id);
   }, [boardId, doc, docReady, nodes.length, transact]);
 
+  /** Move a sticky note; fall back to local React state until Yjs connects. */
   const updateNodePosition = useCallback(
     (nodeId: string, x: number, y: number) => {
       if (!doc || !docReady) {
@@ -385,6 +401,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     return node.clusterId ?? null;
   }, [nodes, selectedNodeId]);
 
+  /** Call the AI broker to assign cluster IDs and persist a trace entry. */
   const runCluster = useCallback(async () => {
     if (!doc || !docReady) return;
     const currentNodes = mapNodesFromDoc(doc).filter((node) => !node.ghost && node.kind === "STICKY");
@@ -428,6 +445,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     }
   }, [boardId, doc, docReady, recordTrace, transact]);
 
+  /** Run `/outline` for the currently-selected cluster and spawn ghost nodes. */
   const runOutline = useCallback(async () => {
     if (!doc || !docReady) return;
     const clusterId = selectedClusterId;
@@ -526,6 +544,7 @@ export function BoardClient({ board }: { board: BoardWithData }) {
     setActionError(null);
   }, [doc, docReady, pendingOutline, transact]);
 
+  /** Track pointer drags so sticky notes can be repositioned smoothly. */
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>, nodeId: string) => {
       event.preventDefault();
@@ -633,22 +652,22 @@ export function BoardClient({ board }: { board: BoardWithData }) {
                 <Plus className="mr-2 h-4 w-4" /> Add sticky
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 data-testid="run-cluster"
                 onClick={runCluster}
                 disabled={!docReady || clusterInFlight}
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+                className="border border-white/40 bg-white/10 text-white hover:bg-white/20"
               >
                 <Sparkles className="mr-2 h-4 w-4" /> {clusterInFlight ? "Clustering" : "/cluster"}
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 data-testid="run-outline"
                 onClick={runOutline}
                 disabled={!docReady || outlineInFlight || !selectedClusterId}
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+                className="border border-white/40 bg-white/10 text-white hover:bg-white/20"
               >
                 <PenSquare className="mr-2 h-4 w-4" /> {outlineInFlight ? "Outlining" : "/outline"}
               </Button>

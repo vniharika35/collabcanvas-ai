@@ -11,6 +11,10 @@ interface BoardNavigatorProps {
   defaultBoardId?: string;
 }
 
+/**
+ * Small helper widget that lets operators paste/copy a board id and deep link
+ * into `/board/<id>` without memorising URLs.
+ */
 export function BoardNavigator({ defaultBoardId }: BoardNavigatorProps) {
   const router = useRouter();
   const [boardId, setBoardId] = useState(defaultBoardId ?? "");

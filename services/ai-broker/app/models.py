@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+# Pydantic models mirror the shared Zod schemas so contracts stay in sync.
+
 
 class ClusterRequest(BaseModel):
     board_id: str = Field(..., alias="boardId")
@@ -42,4 +44,3 @@ class TraceRecord(BaseModel):
     model: str
     tokens_in: int = Field(..., alias="tokensIn")
     tokens_out: int = Field(..., alias="tokensOut")
-

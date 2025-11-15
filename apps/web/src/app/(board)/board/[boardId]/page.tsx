@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BoardClient } from "@/components/board/board-client";
 
+// Force dynamic rendering so board data stays fresh while realtime syncs.
 export const dynamic = "force-dynamic";
 
 interface BoardPageProps {
@@ -11,6 +12,10 @@ interface BoardPageProps {
   }>;
 }
 
+/**
+ * Server component that hydrates the initial board payload before the client
+ * component (Yjs-powered) takes over.
+ */
 export default async function BoardPage({ params }: BoardPageProps) {
   const { boardId } = await params;
 

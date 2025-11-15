@@ -10,6 +10,7 @@ import { RedisCoordinator } from "./redis.js";
 import { log, warn } from "./logger.js";
 import type { ClientMessage, PresenceState, RedisEvent } from "./types.js";
 
+// Coordinate multiple instances via Redis and hand document state to clients.
 const redis = new RedisCoordinator(config.redisUrl);
 const docManager = new DocManager(redis);
 
@@ -51,6 +52,7 @@ function handlePresenceMessage(
   docManager.updatePresence(boardId, clientId, presence);
 }
 
+/** Spin up the websocket + HTTP health server that powers board presence. */
 export function createRealtimeServer() {
   const httpServer = createServer((_, response) => {
     response.writeHead(200, { "Content-Type": "application/json" });

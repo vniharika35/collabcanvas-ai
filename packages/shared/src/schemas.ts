@@ -1,3 +1,4 @@
+// Canonical schema definitions shared between the web app and services.
 import { z } from "zod";
 
 export const clusterRequestSchema = z.object({

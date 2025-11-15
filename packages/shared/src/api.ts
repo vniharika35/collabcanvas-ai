@@ -15,6 +15,7 @@ const getFetch = (fetchImpl?: typeof fetch) => {
   return fetch;
 };
 
+/** Thin wrapper around fetch that enforces the shared Zod contracts. */
 export class AiBrokerClient {
   private readonly baseUrl: string;
   private readonly fetchFn: typeof fetch;
@@ -56,5 +57,4 @@ export class AiBrokerClient {
     return outlineResponseSchema.parse(json);
   }
 }
-
 

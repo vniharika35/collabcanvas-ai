@@ -48,6 +48,10 @@ const systemCards = [
   },
 ];
 
+/**
+ * Marketing/entry page that tees up the board, AI preview, and latest boards.
+ * Fetches a handful of boards so visitors can jump right into the experience.
+ */
 export default async function Home() {
   const boards = await prisma.board.findMany({
     orderBy: { createdAt: "desc" },
