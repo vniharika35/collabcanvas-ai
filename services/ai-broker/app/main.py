@@ -35,6 +35,7 @@ async def root() -> dict[str, str]:
 
 @app.post("/cluster", response_model=ClusterResponse)
 async def cluster_board(req: ClusterRequest) -> ClusterResponse:
+    """Assign cluster ids deterministically so the UI can colour sticky notes."""
     start = time.monotonic()
     num_clusters = min(4, max(2, len(req.node_ids) // 3 or 2))
 
@@ -60,6 +61,7 @@ async def cluster_board(req: ClusterRequest) -> ClusterResponse:
 
 @app.post("/outline", response_model=OutlineResponse)
 async def outline_board(req: OutlineRequest) -> OutlineResponse:
+    """Return ghost outline nodes + trace metadata for the active cluster."""
     start = time.monotonic()
 
     outline_nodes: list[OutlineNode] = []

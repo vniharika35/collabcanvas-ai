@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
+// Fetch latest board snapshot (nodes + traces) for client hydration.
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ boardId: string }> }

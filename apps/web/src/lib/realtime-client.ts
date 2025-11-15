@@ -60,6 +60,10 @@ function isBinaryMessage(data: unknown): data is ArrayBuffer {
   return data instanceof ArrayBuffer;
 }
 
+/**
+ * Hook that manages the websocket connection + Yjs doc lifecycle for a board.
+ * Returns peers, the shared doc, and a helper to patch our presence payload.
+ */
 export function useRealtimePresence({ boardId, self }: UseRealtimePresenceOptions): UseRealtimePresenceResult {
   const [clientId, setClientId] = useState<string | null>(null);
   const [peers, setPeers] = useState<Map<string, RealtimePeer>>(() => new Map());

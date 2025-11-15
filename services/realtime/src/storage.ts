@@ -14,6 +14,7 @@ export interface DocNodeState {
   ghost: boolean;
 }
 
+/** Load committed nodes from Postgres so the Yjs doc can be initialised. */
 export async function loadBoardNodes(boardId: string): Promise<DocNodeState[]> {
   const nodes = await prisma.node.findMany({
     where: { boardId },
@@ -33,6 +34,7 @@ export async function loadBoardNodes(boardId: string): Promise<DocNodeState[]> {
   }));
 }
 
+/** Upsert committed nodes + drop deleted ones after realtime sessions. */
 export async function persistBoardNodes(boardId: string, nodes: DocNodeState[]): Promise<void> {
   try {
     const committed = nodes.filter((node) => !node.ghost);

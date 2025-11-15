@@ -25,6 +25,10 @@ interface BoardContext {
   suppressPersistence: boolean;
 }
 
+/**
+ * Manages the lifecycle of per-board Yjs documents, presence maps, and
+ * persistence timers across websocket clients + Redis events.
+ */
 export class DocManager {
   private readonly boards = new Map<string, BoardContext>();
 

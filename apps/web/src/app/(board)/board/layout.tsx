@@ -4,6 +4,10 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
+/**
+ * Board routes share this shell so navigation + onboarding helpers stay
+ * consistent regardless of which board page renders inside.
+ */
 export default function BoardLayout({
   children,
 }: {
