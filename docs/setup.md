@@ -21,7 +21,7 @@ This log captures the environment checks and scaffolding steps completed so far.
 ## Workspace Configuration
 1. Created `pnpm-workspace.yaml` to include `apps/*`, `services/*`, and `packages/*`.
 2. Added root scripts: `dev:web`, `build:web`, `lint:web`, `db:migrate`, `db:generate`, `db:format`, `db:seed`.
-3. Added `.env.example` (root) with required variables for Postgres, Redis, AI model keys, and telemetry endpoints.
+3. Added `.env.example` (root) with required variables for Postgres, Redis, AI model keys, and telemetry endpoints. The web app reads env vars from `apps/web/.env.local`, so copy the same `DATABASE_URL` there before running `pnpm dev:web`.
 4. Hydrated dependencies with `pnpm install` (requires external network, run with `--no-frozen-lockfile` when updating the lockfile).
 
 ## Web App Scaffold
@@ -110,3 +110,12 @@ This log captures the environment checks and scaffolding steps completed so far.
 - Ghost nodes are tagged in the Yjs document (`ghost: true`) and only persist once the user clicks **Accept outline**.
 - Outline Accept/Undo mutate the shared doc, triggering the realtime persistence loop and updating Postgres automatically.
 - Traces are recorded through `POST /api/boards/[boardId]/traces`, keeping the sidebar up to date with latency/model metadata.
+
+## Testing
+- `pnpm test:unit` runs Node's built-in test runner via `tsx` and currently verifies canvas metric calculations; expand the `tests/` directory as more utilities become factored out.
+
+## UX Refresh (Phase 6)
+- The landing page now fetches recent boards and ships with a Board Navigator widget so anyone can paste or copy a board id and immediately open `/board/<id>`.
+- Workflow + system overview sections explain how realtime sync, the AI broker, and Prisma traces interact, helping contributors understand where data is saved without leaving the UI.
+- Board headers display realtime/AI/persistence status badges alongside a “Board guide” card and data-location checklist.
+- See `docs/phase-06-ux-polish.md` for the full rationale and follow-up tasks (presence-aware chrome, realtime trace streaming, onboarding tour).

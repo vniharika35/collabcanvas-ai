@@ -75,7 +75,7 @@ These schemas live in `packages/shared` and are mirrored by FastAPI Pydantic mod
 - ✅ Phase 5 (AI ghost edits) — `/cluster` colours sticky notes and `/outline` streams ghost nodes with accept/undo flows.
 - 🚧 Phase 6 (Observability & polish) — telemetry, trace streaming, automated tests, and launch hardening.
 
-Follow progress in `docs/phase-01-repo-and-mvp-skeleton.md`, `docs/phase-02-board-and-persistence.md`, `docs/phase-03-realtime.md`, `docs/phase-04-realtime-sync.md`, `docs/phase-05-ai-ghost-edits.md`, and the running log in `docs/setup.md`.
+Follow progress in `docs/phase-01-repo-and-mvp-skeleton.md`, `docs/phase-02-board-and-persistence.md`, `docs/phase-03-realtime.md`, `docs/phase-04-realtime-sync.md`, `docs/phase-05-ai-ghost-edits.md`, `docs/phase-06-ux-polish.md`, and the running log in `docs/setup.md`.
 
 ## Useful Commands
 - `pnpm dev:web` — run the Next.js dev server.
